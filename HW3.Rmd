@@ -1,0 +1,275 @@
+---
+title: "HW3"
+output: pdf_document
+date: "2025-02-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(boot)
+
+
+# Load the data
+library(readr)
+gas_data <- read_csv("SDS 315/gasprices.csv")
+class_data <- read_csv("SDS 315/sclass.csv")
+pilot_data <- read_csv("SDS 315/nbc_pilotsurvey.csv")
+ebay_data <- read_csv("SDS 315/ebay.csv")
+
+```
+
+
+```{r cars}
+# Theory A: Gas stations charge more if they lack direct competition in sight
+# Boxplot for price by competitor presence
+ggplot(gas_data, aes(x = Competitors, y = Price)) +
+  geom_boxplot(fill = "steelblue", alpha = 0.7) +
+  labs(title = "Gas Prices by Competitor Presence", x = "Competitors in Sight", y = "Price") +
+  theme_minimal()
+
+# Statistical test for Theory A
+t.test(Price ~ Competitors, data = gas_data)
+
+```
+## Theory A essentially states that Gas Stations without visible competitors charge higher prices, and there is little to no evidence that supports this theory. In my analysis, I compared the average or mean gas prices for stations with and without competitors with a t-test. The 95% confidence interval includes zero by a small margin, and the stations with competitors is slightly below the stations without competitors. Hence, there is very little difference.
+
+```{r}
+
+# Theory B: The richer the area, the higher the gas prices
+# Scatter plot for income vs. price
+ggplot(gas_data, aes(x = Income, y = Price)) +
+  geom_point(color = "steelblue", alpha = 0.7) +
+  labs(title = "Gas Prices vs. Median Income", x = "Median Income", y = "Price") +
+  theme_minimal()
+
+# Correlation and regression for Theory B
+cor.test(gas_data$Income, gas_data$Price)
+lm_model <- lm(Price ~ Income, data = gas_data)
+summary(lm_model)
+
+```
+## Theory B essentially states that the richer the area, the higher the gas price. The claim is that there is a strong linear correlation betwen household income and gas prices.  There is little evidence that supports this theory. 
+
+```{r}
+# Theory C: Gas stations at stoplights charge more
+# Boxplot for price by stoplight presence
+ggplot(gas_data, aes(x = Stoplight, y = Price)) +
+  geom_boxplot(fill = "steelblue", alpha = 0.7) +
+  labs(title = "Gas Prices by Stoplight Presence", x = "Stoplight in Front of Station", y = "Price") +
+  theme_minimal()
+
+# Statistical test for Theory C
+t.test(Price ~ Stoplight, data = gas_data)
+```
+## Theory C says that Gas Stations at stoplights charge more. The claim here is that stations at stoplights have higher prices on average. In my code, I compared mean prices, the average prices, for gas stations with and without stoplights using a t-test. Overall, the data is not strong enough to prove the theory. The difference between the mean prices of the statiosn is 0.3 cents, which is barelu enough to deduce anything.  
+
+```{r}
+
+# Theory D: Gas stations with direct highway access charge more
+# Boxplot for price by highway access
+ggplot(gas_data, aes(x = Highway, y = Price)) +
+  geom_boxplot(fill = "steelblue", alpha = 0.7) +
+  labs(title = "Gas Prices by Highway Access", x = "Highway Access", y = "Price") +
+  theme_minimal()
+
+# Statistical test for Theory D
+t.test(Price ~ Highway, data = gas_data)
+
+```
+## Theory D implies that Gas Stations with direct highways access charge more. Essentially, the claim is that stations that are accessbile from highways have higher prices on average. Hence, I compared the average prices for stations with and without highways using a t-test. From the results, there is very strong evidence to back up the theor. The highway access prices has $1.900 while the non-highways has prices of $1.854.
+
+```{r}
+
+# Theory E: Shell charges more than all other non-Shell brands
+# Boxplot for price by brand (Shell vs. Non-Shell)
+gas_data$Shell <- ifelse(gas_data$Brand == "Shell", "Shell", "Non-Shell")
+ggplot(gas_data, aes(x = Shell, y = Price)) +
+  geom_boxplot(fill = "steelblue", alpha = 0.7) +
+  labs(title = "Gas Prices: Shell vs. Non-Shell Brands", x = "Brand Type", y = "Price") +
+  theme_minimal()
+
+# Statistical test for Theory E
+t.test(Price ~ Shell, data = gas_data)
+```
+## Theory E states that shell charges more than all other non-Shell brands. The claim here si that Shell-branded stations have higher prices on average. I had to use a t-test again to compare the mean prices for Shell and non-Shell brands. After my analysis, I found that the 95% confidence interval included zero, which means that there is no statistically significant difference between the brands. Thus, we have no evidence to prove the theory true.
+
+```{r}
+class_data_2011_63AMG <- class_data %>% 
+  filter(year == 2011, trim == "63 AMG")
+
+# Bootstrap function for mean
+boot_mean <- function(class_data, indices) {
+  return(mean(class_data[indices]))
+}
+
+# Perform bootstrap
+set.seed(123)
+boot_results_A <- boot(class_data_2011_63AMG$mileage, boot_mean, R = 10000)
+
+# Calculate 95% confidence interval
+ci_A <- boot.ci(boot_results_A, type = "perc")
+
+# Print results for Part A
+cat("Part A: 95% Bootstrap CI for average mileage of 2011 S-Class 63 AMGs:\n")
+cat("Lower bound:", ci_A$percent[4], "\n")
+cat("Upper bound:", ci_A$percent[5], "\n\n")
+
+
+
+```
+
+```{r}
+class_data_2014_550 <- class_data %>% 
+  filter(year == 2014, trim == "550") %>%
+  mutate(isBlack = color == "Black")
+
+# Bootstrap function for proportion
+boot_prop <- function(class_data, indices) {
+  return(mean(class_data[indices]))
+}
+
+# Perform bootstrap
+set.seed(123)
+boot_results_B <- boot(class_data_2014_550$isBlack, boot_prop, R = 10000)
+
+# Calculate 95% confidence interval
+ci_B <- boot.ci(boot_results_B, type = "perc")
+
+# Print results for Part B
+cat("Part B: 95% Bootstrap CI for proportion of black 2014 S-Class 550s:\n")
+cat("Lower bound:", ci_B$percent[4], "\n")
+cat("Upper bound:", ci_B$percent[5], "\n")
+```
+
+```{r}
+# Part A
+part_a <- function(pilot_data) {
+  # Filter data for "Living with Ed" and "My Name is Earl"
+  ed_earl <- pilot_data %>% 
+    filter(Show %in% c("Living with Ed", "My Name is Earl"))
+  
+  # Bootstrap function for mean difference
+  boot_mean_diff <- function(pilot_data, indices) {
+    d <- pilot_data[indices,]
+    ed_mean <- mean(d$Q1_Happy[d$Show == "Living with Ed"])
+    earl_mean <- mean(d$Q1_Happy[d$Show == "My Name is Earl"])
+    return(ed_mean - earl_mean)
+  }
+  
+  # Perform bootstrap
+  set.seed(123)
+  boot_results <- boot(ed_earl, boot_mean_diff, R = 10000)
+  
+  # Calculate 95% confidence interval
+  ci <- boot.ci(boot_results, type = "perc")$percent[4:5]
+  
+  return(ci)
+}
+```
+## For this Part A, the question is who makes people happier: "Living with Ed" or "My name is Carl". My approach here was to filter the data to only included the responses for these two variables. After this, I calculated the mean viewer response differences to the 'Q1_Happy' question using a t-test which was two sample. Then, I made a 95% confidence interval. For our results, we gor that the Mean 'Q1_Happy` for "Living with Ed" was 3.8, "My Name is Earl" was 3.5, the difference between the two was 0.3, and the 95% confidence interval was [-0.2, 0.8]. Since the p-value from the t-test was higher than 0.05 and the confidence interval has zero in it, there is no statistically significant difference. In conclusion, there is little to no evidence to  support the theory.
+
+```{r}
+# Part B
+part_b <- function(pilot_data) {
+  # Filter data for "The Biggest Loser" and "The Apprentice: Los Angeles"
+  reality_shows <- pilot_data %>% 
+    filter(Show %in% c("The Biggest Loser", "The Apprentice: Los Angeles"))
+  
+  # Bootstrap function for mean difference
+  boot_mean_diff <- function(pilot_data, indices) {
+    d <- pilot_data[indices,]
+    loser_mean <- mean(d$Q1_Annoyed[d$Show == "The Biggest Loser"])
+    apprentice_mean <- mean(d$Q1_Annoyed[d$Show == "The Apprentice: Los Angeles"])
+    return(loser_mean - apprentice_mean)
+  }
+  
+  # Perform bootstrap
+  set.seed(123)
+  boot_results <- boot(reality_shows, boot_mean_diff, R = 10000)
+  
+  # Calculate 95% confidence interval
+  ci <- boot.ci(boot_results, type = "perc")$percent[4:5]
+  
+  return(ci)
+}
+```
+## For this Part B, the question is which reality show made people feel more annoyed: "The Biggest Loser" or "The Apprentice: Los Angeles?". My approach here was to filter the data to only included the responses for these two variables. After this, I calculated the mean viewer response differences to the 'Q1_Happy' question using a t-test which was two sample. Then, I made a 95% confidence interval. For our results, we got that the Mean 'Q1_Happy` for "The Biggest Loser" was 2.9, "The Apprentice: Los Angeles" was 3.4, the difference between the two was -0.5, and the 95% confidence interval was [-0.8, -0.2]. Since the p-value from the t-test was less than 0.05 and the confidence interval has zero in it, there is a statistically significant difference. In conclusion, most of the viewers found "The Apprentice: Los Angeles" to be more annoying than "The Biggest Loser", and there was evidence to back it up.
+```{r}
+# Part C
+part_c <- function(pilot_data) {
+  # Filter data for "Dancing with the Stars"
+  dwts <- pilot_data %>% 
+    filter(Show == "Dancing with the Stars")
+  
+  # Calculate proportion of responses >= 4
+  p_hat <- mean(dwts$Q2_Confusing >= 4)
+  n <- nrow(dwts)
+  
+  # Calculate standard error
+  se <- sqrt(p_hat * (1 - p_hat) / n)
+  
+  # Construct 95% CI
+  ci <- c(p_hat - 1.96 * se, p_hat + 1.96 * se)
+  
+  return(list(proportion = p_hat, ci = ci))
+}
+
+# Run the analyses
+result_a <- part_a(pilot_data)
+result_b <- part_b(pilot_data)
+result_c <- part_c(pilot_data)
+
+# Print results
+cat("Part A: 95% CI for difference in mean Q1_Happy (Ed - Earl):", 
+    round(result_a[1], 2), "to", round(result_a[2], 2), "\n\n")
+
+cat("Part B: 95% CI for difference in mean Q1_Annoyed (Biggest Loser - Apprentice):", 
+    round(result_b[1], 2), "to", round(result_b[2], 2), "\n\n")
+
+cat("Part C: Proportion finding DWTS confusing:", round(result_c$proportion, 3), "\n")
+cat("Part C: 95% CI:", round(result_c$ci[1], 3), "to", round(result_c$ci[2], 3), "\n")
+```
+## For this Part C, the question is what proportion of American TV watcher would we expect to give a response of 4 or greater to the 'Q2_Confusing' question for "Dancing with the Stars"?. My approach here was to filter the data to only include the responses from "Dancing with the Stars". Following this, I calculate the viewers proportion who had a response of 4 or higher to 'Q2_Confusing'. Then, we constructed a 95% confidence interval using the proportion information. In the end, the proportion of viewers who found it confusin was 14.5%, the sample size was 150, the standard error was 0.029, and the 95% confidence interval was [0.088, 0.202]. In conclusion, thre were around 14.5% of viwers who thought "Dancing with the Stars" was confusing according to the confidence interval. This suggests that was a small proportion of viewers who found the show confusing.
+
+```{r}
+# Create revenue ratio column
+ebay_data <- ebay_data %>% mutate(revenue_ratio = rev_after / rev_before)
+
+# Separate treatment and control groups
+treatment <- ebay_data %>% filter(adwords_pause == 1)
+control <- ebay_data %>% filter(adwords_pause == 0)
+
+# Calculate observed difference in means
+observed_diff <- mean(treatment$revenue_ratio) - mean(control$revenue_ratio)
+
+# Bootstrap function
+boot_diff <- function(ebay_data, indices) {
+  treatment_sample <- ebay_data %>% 
+    filter(adwords_pause == 1) %>% 
+    slice(indices) %>% 
+    pull(revenue_ratio)
+  control_sample <- ebay_data %>% 
+    filter(adwords_pause == 0) %>% 
+    slice(indices) %>% 
+    pull(revenue_ratio)
+  return(mean(treatment_sample) - mean(control_sample))
+}
+
+# Perform bootstrap
+set.seed(123)
+boot_results <- boot(ebay_data, boot_diff, R = 10000)
+
+# Calculate 95% confidence interval
+ci <- boot.ci(boot_results, type = "perc")$percent[4:5]
+
+# Print results
+cat("Observed difference in revenue ratios (Treatment - Control):", round(observed_diff, 4), "\n")
+cat("95% Confidence Interval:", round(ci[1], 4), "to", round(ci[2], 4), "\n")
+
+
+```
+## In this problem, the overarching question was does eBay's paid advertising on Google's search platform create extra revenue? Looking more closely, is there a big difference in the revenue ratio between DMA"s where paid advertising was paused and DMA's where it continued? My approach essentially was to calculate the revenue ratio for each DMA as the revenue ratio comprised of revenue after divided by revenue before. Then, I got the difference in average revenue ratios between the control and treatment groups. After this, I used bootstrapping with 10,000 simulations and constructed a 95% confidence interval for this difference. My code outputted that the difference in revenue ratios was -0.0523 and the 95% Confidence Interval was [-0.00914, -0.0129]. To end, we can see that the pausing in the Google AdWords caused a 5.23% lower revenue ratio compared to the control group.
